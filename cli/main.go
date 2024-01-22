@@ -1,15 +1,15 @@
 package main
 
 import (
-	"github.com/rebuy-de/rebuy-go-sdk/v6/pkg/cmdutil"
-	"github.com/sirupsen/logrus"
+	"fmt"
+	"os"
 
 	"github.com/der-eismann/libstone/cli/cmd"
 )
 
 func main() {
-	defer cmdutil.HandleExit()
 	if err := cmd.NewRootCommand().Execute(); err != nil {
-		logrus.Fatal(err)
+		fmt.Fprint(os.Stderr, err)
+		os.Exit(1)
 	}
 }

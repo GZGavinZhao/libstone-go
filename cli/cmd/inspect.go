@@ -1,43 +1,40 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/der-eismann/libstone/pkg/header"
 	"github.com/der-eismann/libstone/pkg/payload"
 	"github.com/klauspost/compress/zstd"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-func Inspect(ctx context.Context, cmd *cobra.Command, args []string) {
+func Inspect(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		logrus.Fatal("One stone file as argument required")
+		return errors.New("one stone file as argument required")
 	}
 
 	var pos int64
 
 	absPath, err := filepath.Abs(args[0])
 	if err != nil {
-		logrus.Fatalf("Failed to get absolute path: %s", err)
+		return fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
 	file, err := os.Open(absPath)
 	if err != nil {
-		logrus.Fatalf("Failed to open file: %s", err)
+		return fmt.Errorf("failed to open file: %w", err)
 	}
 
 	fmt.Printf("\"%s\" = stone container version V1\n", absPath)
 
 	packageHeader, err := header.ReadHeader(io.NewSectionReader(file, 0, 32))
 	if err != nil {
-		logrus.Fatalf("Failed to read package header: %s", err)
+		return fmt.Errorf("failed to read package header: %w", err)
 	}
 
 	pos += 32
@@ -45,7 +42,7 @@ func Inspect(ctx context.Context, cmd *cobra.Command, args []string) {
 	for i := 0; i < int(packageHeader.Data.NumPayloads); i++ {
 		payloadheader, err := payload.ReadPayloadHeader(io.NewSectionReader(file, pos, 32))
 		if err != nil {
-			logrus.Fatalf("Failed to read payload header: %s", err)
+			return fmt.Errorf("failed to read payload header: %w", err)
 		}
 		//payloadheader.Print()
 
@@ -53,7 +50,7 @@ func Inspect(ctx context.Context, cmd *cobra.Command, args []string) {
 
 		payloadReader, err := getCompressionReader(file, payloadheader.Compression, pos, int64(payloadheader.StoredSize))
 		if err != nil {
-			logrus.Fatalf("Failed to get compression reader: %s", err)
+			return fmt.Errorf("failed to get compression reader: %w", err)
 		}
 
 		pos += int64(payloadheader.StoredSize)
@@ -69,9 +66,10 @@ func Inspect(ctx context.Context, cmd *cobra.Command, args []string) {
 			continue
 		}
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
+	return nil
 }
 
 func getCompressionReader(r io.ReaderAt, compressionType payload.Compression, offset, length int64) (io.Reader, error) {

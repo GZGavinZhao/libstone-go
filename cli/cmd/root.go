@@ -1,19 +1,24 @@
 package cmd
 
 import (
-	"github.com/rebuy-de/rebuy-go-sdk/v6/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
-func NewRootCommand() *cobra.Command {
-	return cmdutil.New(
-		"libstone", "A golang implementation for stone binary packages",
-		cmdutil.WithLogVerboseFlag(),
-		cmdutil.WithVersionCommand(),
+var Version string
 
-		cmdutil.WithSubCommand(cmdutil.New(
-			"inspect", "Inspect stone package contents",
-			cmdutil.WithRun(Inspect),
-		)),
+func NewRootCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "libstone",
+		Short:   "A golang implementation for stone binary packages",
+		Version: Version,
+	}
+	cmd.AddCommand(
+		&cobra.Command{
+			Use:     "inspect",
+			Short:   "Inspect stone package contents",
+			Version: Version,
+			RunE:    Inspect,
+		},
 	)
+	return cmd
 }

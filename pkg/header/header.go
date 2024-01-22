@@ -2,9 +2,9 @@ package header
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
-
-	"github.com/pkg/errors"
 )
 
 //go:generate -command stringer go run golang.org/x/tools/cmd/stringer
@@ -53,22 +53,22 @@ func ReadHeader(r io.Reader) (AgnosticHeader, error) {
 
 	err := binary.Read(r, binary.BigEndian, &agnosticHeader)
 	if err != nil {
-		return AgnosticHeader{}, errors.Wrap(err, "Couldn't read header into struct")
+		return AgnosticHeader{}, fmt.Errorf("couldn't read header into struct: %w", err)
 	}
 
 	stoneMagic := getStoneMagic()
 	integrityCheck := getIntegrityCheck()
 
 	if string(agnosticHeader.Magic[:]) != string(stoneMagic[:]) {
-		return AgnosticHeader{}, errors.New("File is no .stone file")
+		return AgnosticHeader{}, errors.New("file is no .stone file")
 	}
 
 	if string(agnosticHeader.Data.IntegrityCheck[:]) != string(integrityCheck[:]) {
-		return AgnosticHeader{}, errors.New("Integrity Check sequence doesn't match")
+		return AgnosticHeader{}, errors.New("integrity Check sequence doesn't match")
 	}
 
 	if agnosticHeader.Data.FileType > 4 {
-		return AgnosticHeader{}, errors.New("Unsupported FileType")
+		return AgnosticHeader{}, errors.New("unsupported FileType")
 	}
 
 	return agnosticHeader, nil

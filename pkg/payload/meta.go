@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 //go:generate -command stringer go run golang.org/x/tools/cmd/stringer
@@ -222,6 +220,6 @@ func switchstuff(r *bufio.Reader, recordType RecordType) (any, error) {
 	case RecordTypeProvider:
 		return ReadDependsProvides(r)
 	default:
-		return nil, errors.Errorf("Unknown RecordType: %s", recordType.String())
+		return nil, fmt.Errorf("unknown RecordType: %w", recordType)
 	}
 }
