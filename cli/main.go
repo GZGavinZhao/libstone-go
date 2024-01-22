@@ -4,7 +4,7 @@ import (
 	"github.com/rebuy-de/rebuy-go-sdk/v6/pkg/cmdutil"
 	"github.com/sirupsen/logrus"
 
-	"github.com/der-eismann/libstone/cmd"
+	"github.com/der-eismann/libstone/cli/cmd"
 )
 
 func main() {
