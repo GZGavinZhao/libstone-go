@@ -1,4 +1,4 @@
-module github.com/der-eismann/libstone
+module github.com/GZGavinZhao/libstone-go
 
 go 1.21
 

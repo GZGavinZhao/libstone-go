@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/der-eismann/libstone/pkg/header"
-	"github.com/der-eismann/libstone/pkg/payload"
+	"github.com/GZGavinZhao/libstone-go/pkg/header"
+	"github.com/GZGavinZhao/libstone-go/pkg/payload"
 	"github.com/klauspost/compress/zstd"
 	"github.com/spf13/cobra"
 )

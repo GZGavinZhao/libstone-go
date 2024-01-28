@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/der-eismann/libstone/cli/cmd"
+	"github.com/GZGavinZhao/libstone-go/cli/cmd"
 )
 
 func main() {
