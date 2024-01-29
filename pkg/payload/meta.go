@@ -127,7 +127,7 @@ func PrintMetaPayload(r io.Reader, records int) error {
 			return err
 		}
 
-		data, err := switchstuff(bufferedReader, record.RecordType)
+		data, err := ReadRecordData(bufferedReader, record.RecordType)
 		if err != nil {
 			return err
 		}
@@ -195,7 +195,7 @@ func wrapDependency(depType Dependency, name string) string {
 	return name
 }
 
-func switchstuff(r *bufio.Reader, recordType RecordType) (any, error) {
+func ReadRecordData(r *bufio.Reader, recordType RecordType) (any, error) {
 	switch recordType {
 	case RecordTypeInt8:
 		return ReadIntegerData[int8](r)
