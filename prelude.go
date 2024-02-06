@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-// Version is the stone format version contained inside the header.
+// Version is the stone format version contained inside the [Prelude].
 type Version uint32
 
 const (
@@ -28,19 +28,19 @@ var (
 	ErrNoStone = errors.New("data is not a stone archive")
 )
 
-// HeaderData is an agnostic array of bytes extending the base Header.
+// PreludeData is an agnostic array of bytes extending the base Prelude.
 // Its meaning varies according to Version.
-type HeaderData [24]byte
+type PreludeData [24]byte
 
-// Header is the header of the stone format.
-type Header struct {
-	Data HeaderData
+// Prelude is the header of the stone format.
+type Prelude struct {
+	Data PreludeData
 
 	// Version is the version of this stone archive.
 	Version Version
 }
 
-func (h *Header) UnmarshalBinary(data []byte) error {
+func (h *Prelude) UnmarshalBinary(data []byte) error {
 	r := bytes.NewReader(data)
 
 	var magic magicNumber

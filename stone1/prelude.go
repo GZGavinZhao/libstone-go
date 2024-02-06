@@ -20,34 +20,34 @@ const (
 	BuildManifest
 )
 
-type Header struct {
+type Prelude struct {
 	NumPayloads uint16
 	FileType    FileType
 }
 
-func NewHeader(genericHdr libstone.Header) (Header, error) {
-	if genericHdr.Version != libstone.V1 {
-		return Header{}, errors.New("header version is not 1")
+func NewPrelude(genericPre libstone.Prelude) (Prelude, error) {
+	if genericPre.Version != libstone.V1 {
+		return Prelude{}, errors.New("header version is not 1")
 	}
-	var hdr Header
-	return hdr, hdr.UnmarshalBinary(genericHdr.Data[:])
+	var prelude Prelude
+	return prelude, prelude.UnmarshalBinary(genericPre.Data[:])
 }
 
-func (h *Header) UnmarshalBinary(data []byte) error {
-	if len(data) <= len(libstone.HeaderData{}) {
+func (p *Prelude) UnmarshalBinary(data []byte) error {
+	if len(data) <= len(libstone.PreludeData{}) {
 		return errors.New("insufficient number of bytes to parse a V1 header")
 	}
 	if [21]byte(data[2:2+len(integrityCheck)]) != integrityCheck {
 		return errors.New("V1 integrity check failed")
 	}
 
-	h.NumPayloads = binary.BigEndian.Uint16(data)
-	h.FileType = FileType(data[2+len(integrityCheck)])
+	p.NumPayloads = binary.BigEndian.Uint16(data)
+	p.FileType = FileType(data[2+len(integrityCheck)])
 	return nil
 }
 
-func (h *Header) MarshalBinary() ([]byte, error) {
-	var out libstone.HeaderData
+func (h *Prelude) MarshalBinary() ([]byte, error) {
+	var out libstone.PreludeData
 	binary.BigEndian.PutUint16(out[:], h.NumPayloads)
 	copy(out[2:], integrityCheck[:])
 	out[2+len(integrityCheck)] = byte(h.FileType)
