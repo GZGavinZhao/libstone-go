@@ -11,18 +11,18 @@ var (
 	integrityCheck = [21]byte{0, 0, 1, 0, 0, 2, 0, 0, 3, 0, 0, 4, 0, 0, 5, 0, 0, 6, 0, 0, 7}
 )
 
-type FileType uint8
+type StoneType uint8
 
 const (
-	Binary FileType = iota + 1
-	Delta
-	Repository
-	BuildManifest
+	BinaryStone StoneType = iota + 1
+	DeltaStone
+	RepositoryStone
+	BuildManifestStone
 )
 
 type Prelude struct {
 	NumPayloads uint16
-	FileType    FileType
+	StoneType   StoneType
 }
 
 func NewPrelude(genericPre libstone.Prelude) (Prelude, error) {
@@ -42,7 +42,7 @@ func (p *Prelude) UnmarshalBinary(data []byte) error {
 	}
 
 	p.NumPayloads = binary.BigEndian.Uint16(data)
-	p.FileType = FileType(data[2+len(integrityCheck)])
+	p.StoneType = StoneType(data[2+len(integrityCheck)])
 	return nil
 }
 
@@ -50,6 +50,6 @@ func (h *Prelude) MarshalBinary() ([]byte, error) {
 	var out libstone.PreludeData
 	binary.BigEndian.PutUint16(out[:], h.NumPayloads)
 	copy(out[2:], integrityCheck[:])
-	out[2+len(integrityCheck)] = byte(h.FileType)
+	out[2+len(integrityCheck)] = byte(h.StoneType)
 	return out[:], nil
 }

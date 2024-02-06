@@ -6,20 +6,20 @@ import (
 	"errors"
 )
 
-// Kind is the kind of the archive content.
-type Kind = uint8
+// ArchiveType is the kind of the archive content.
+type ArchiveType = uint8
 
 const (
-	// Meta indicates a metadata store.
-	Meta Kind = iota + 1
-	// Content indicates a file store, i.e. hash indexed.
-	Content
-	// Layout indicates a file-to-disk map with basic UNIX permissions and types.
-	Layout
+	// MetaArchive indicates a metadata store.
+	MetaArchive ArchiveType = iota + 1
+	// ContentArchive indicates a file store, i.e. hash indexed.
+	ContentArchive
+	// LayoutArchive indicates a file-to-disk map with basic UNIX permissions and types.
+	LayoutArchive
 	// Index indicates an index for deduplicated store.
-	Index
-	// Attributes indicates an attribute store.
-	Attributes
+	IndexArchive
+	// AttributeArchive indicates an attribute store.
+	AttributeArchive
 )
 
 // Compression is the compression method of the archive content.
@@ -45,7 +45,7 @@ type Header struct {
 	// Version is the version of the payload data format.
 	Version uint16
 	// Kind is the kind of payload.
-	Kind Kind
+	Kind ArchiveType
 	// Compression is the compression used for the payload.
 	Compression Compression
 }

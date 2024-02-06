@@ -1,4 +1,4 @@
-package payload1
+package stone1
 
 type MetaTag uint16
 
@@ -101,7 +101,7 @@ const (
 	/// Python is Python module.
 	Python
 	/// Binary is a binary in /usr/bin.
-	Binary
+	BinaryDep
 	/// SystemBinary is a binary in /usr/sbin.
 	SystemBinary
 	/// PkgConfig32 is a emul32-compatible pkgconfig .pc dependency (contained in lib32/*.pc).
@@ -122,7 +122,7 @@ func (d DependencyKind) String() string {
 		return "cmake"
 	case Python:
 		return "python"
-	case Binary:
+	case BinaryDep:
 		return "binary"
 	case SystemBinary:
 		return "sysbinary"
@@ -133,7 +133,7 @@ func (d DependencyKind) String() string {
 	}
 }
 
-type Meta struct {
+type MetaRecord struct {
 	Tag   MetaTag
 	Value MetaValue
 }
