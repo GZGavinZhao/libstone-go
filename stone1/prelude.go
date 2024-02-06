@@ -27,7 +27,7 @@ type Prelude struct {
 
 func NewPrelude(genericPre libstone.Prelude) (Prelude, error) {
 	if genericPre.Version != libstone.V1 {
-		return Prelude{}, errors.New("header version is not 1")
+		return Prelude{}, errors.New("prelude version is not 1")
 	}
 	var prelude Prelude
 	return prelude, prelude.UnmarshalBinary(genericPre.Data[:])
@@ -35,7 +35,7 @@ func NewPrelude(genericPre libstone.Prelude) (Prelude, error) {
 
 func (p *Prelude) UnmarshalBinary(data []byte) error {
 	if len(data) <= len(libstone.PreludeData{}) {
-		return errors.New("insufficient number of bytes to parse a V1 header")
+		return errors.New("insufficient number of bytes to parse a V1 prelude")
 	}
 	if [21]byte(data[2:2+len(integrityCheck)]) != integrityCheck {
 		return errors.New("V1 integrity check failed")
