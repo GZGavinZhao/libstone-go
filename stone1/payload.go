@@ -1,5 +1,11 @@
 package stone1
 
+import (
+	"bytes"
+	"encoding/binary"
+	"errors"
+)
+
 // Kind is the kind of the archive content.
 type Kind = uint8
 
@@ -42,4 +48,18 @@ type Header struct {
 	Kind Kind
 	// Compression is the compression used for the payload.
 	Compression Compression
+}
+
+func (h *Header) UnmarshalBinary(data []byte) error {
+	if len(data) < binary.Size(h) {
+		return errors.New("insufficient number of bytes to parse a V1 payload header")
+	}
+	rdr := bytes.NewReader(data)
+	return binary.Read(rdr, binary.BigEndian, h)
+}
+
+func (h *Header) MarshalBinary() ([]byte, error) {
+	out := make([]byte, binary.Size(h))
+	wrt := bytes.NewBuffer(out)
+	return out, binary.Write(wrt, binary.BigEndian, h)
 }
