@@ -16,6 +16,12 @@ func (r *ByteWalker) Ahead(n int) []byte {
 	return val
 }
 
+func (r *ByteWalker) Uint8() uint8 {
+	val := (*r)[0]
+	*r = (*r)[1:]
+	return val
+}
+
 func (r *ByteWalker) Uint16() uint16 {
 	val := byteOrder.Uint16(*r)
 	*r = (*r)[2:]

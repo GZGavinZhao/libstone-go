@@ -1,10 +1,10 @@
 package stone1
 
 import (
-	"encoding/binary"
 	"errors"
 
 	"github.com/der-eismann/libstone"
+	"github.com/der-eismann/libstone/internal/readers"
 )
 
 var (
@@ -29,27 +29,16 @@ func NewPrelude(genericPre libstone.Prelude) (Prelude, error) {
 	if genericPre.Version != libstone.V1 {
 		return Prelude{}, errors.New("prelude version is not 1")
 	}
-	var prelude Prelude
-	return prelude, prelude.UnmarshalBinary(genericPre.Data[:])
-}
-
-func (p *Prelude) UnmarshalBinary(data []byte) error {
-	if len(data) <= len(libstone.PreludeData{}) {
-		return errors.New("insufficient number of bytes to parse a V1 prelude")
-	}
-	if [21]byte(data[2:2+len(integrityCheck)]) != integrityCheck {
-		return errors.New("V1 integrity check failed")
+	if len(genericPre.Data) <= len(libstone.PreludeData{}) {
+		return Prelude{}, errors.New("insufficient number of bytes to parse a V1 prelude")
 	}
 
-	p.NumPayloads = binary.BigEndian.Uint16(data)
-	p.StoneType = StoneType(data[2+len(integrityCheck)])
-	return nil
-}
-
-func (h *Prelude) MarshalBinary() ([]byte, error) {
-	var out libstone.PreludeData
-	binary.BigEndian.PutUint16(out[:], h.NumPayloads)
-	copy(out[2:], integrityCheck[:])
-	out[2+len(integrityCheck)] = byte(h.StoneType)
-	return out[:], nil
+	wlk := readers.ByteWalker(genericPre.Data[:])
+	var pre Prelude
+	pre.NumPayloads = wlk.Uint16()
+	if [21]byte(wlk.Ahead(len(integrityCheck))) != integrityCheck {
+		return Prelude{}, errors.New("V1 integrity check failed")
+	}
+	pre.StoneType = StoneType(wlk.Uint8())
+	return pre, nil
 }
