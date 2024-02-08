@@ -1,10 +1,10 @@
 package libstone
 
 import (
-	"bytes"
-	"encoding/binary"
 	"errors"
 	"io"
+
+	"github.com/der-eismann/libstone/internal/readers"
 )
 
 // Version is the stone format version contained inside the [Prelude].
@@ -15,17 +15,19 @@ const (
 	V1 Version = iota + 1
 )
 
-type magicNumber = [4]byte
-
-var (
-	// MagicNumber is the magic number of a stone archive.
-	MagicNumber = magicNumber{0, 'm', 'o', 's'}
-)
-
 var (
 	// ErrNoStone is returned when the magic number doesn't match
 	// [MagicNumber].
 	ErrNoStone = errors.New("data is not a stone archive")
+)
+
+const (
+	preludeLen = 32
+)
+
+var (
+	// magicNumber is the magic number of a stone archive.
+	magicNumber = [4]byte{0, 'm', 'o', 's'}
 )
 
 // PreludeData is an agnostic array of bytes extending the base Prelude.
@@ -40,17 +42,19 @@ type Prelude struct {
 	Version Version
 }
 
-func (h *Prelude) UnmarshalBinary(data []byte) error {
-	r := bytes.NewReader(data)
-
-	var magic magicNumber
-	_, err := io.ReadFull(r, magic[:])
+func ReadPrelude(src io.Reader) (Prelude, error) {
+	var rawPrelude [preludeLen]byte
+	_, err := io.ReadFull(src, rawPrelude[:])
 	if err != nil {
-		return err
-	}
-	if magic != MagicNumber {
-		return ErrNoStone
+		return Prelude{}, err
 	}
 
-	return binary.Read(r, binary.BigEndian, &h)
+	wlk := readers.ByteWalker(rawPrelude[:])
+	if [4]byte(wlk.Ahead(len(magicNumber))) != magicNumber {
+		return Prelude{}, ErrNoStone
+	}
+	var out Prelude
+	out.Data = PreludeData(wlk.Ahead(len(out.Data)))
+	out.Version = Version(wlk.Uint32())
+	return out, nil
 }
