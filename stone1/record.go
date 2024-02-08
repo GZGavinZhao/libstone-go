@@ -1,5 +1,28 @@
 package stone1
 
+import (
+	"io/fs"
+
+	"github.com/zeebo/xxh3"
+)
+
+type AttributeRecord struct {
+	Key   []byte
+	Value []byte
+}
+
+// IndexRecord records offsets to unique files within the content when decompressed.
+// This is used to split the file into the content store on disk before promoting
+// to a transaction.
+type IndexRecord struct {
+	// Start is the index where the content starts.
+	Start uint64
+	// End is the index where the content ends.
+	End uint64
+	// Hash is the XXH3_128 hash of the content.
+	Hash xxh3.Uint128
+}
+
 type MetaTag uint16
 
 const (
@@ -136,4 +159,89 @@ func (d DependencyKind) String() string {
 type MetaRecord struct {
 	Tag   MetaTag
 	Value MetaValue
+}
+
+type FileType uint8
+
+const (
+	// Regular is a regular file.
+	Regular FileType = iota + 1
+	// Symlink is a symbolic link (source, target pair).
+	Symlink
+	// Directory is a directory node.
+	Directory
+	// CharacterDevice is a character device.
+	CharacterDevice
+	// BlockDevice is a block device.
+	BlockDevice
+	// FIFO is a FIFO node.
+	FIFO
+	// Socket is a UNIX socket.
+	Socket
+)
+
+type Entry struct {
+	FileType FileType
+	value    any
+}
+
+func (e Entry) Source() []byte {
+	switch e.FileType {
+	case Regular:
+		hashAndTarget := e.value.(tuple[xxh3.Uint128, string])
+		hash := hashAndTarget.val1.Bytes()
+		return hash[:]
+	case Symlink:
+		sourceAndTarget := e.value.(tuple[string, string])
+		return []byte(sourceAndTarget.val1)
+	case Directory,
+		CharacterDevice,
+		BlockDevice,
+		FIFO,
+		Socket:
+		return nil
+	default:
+		panic("unknown value of FileType")
+	}
+}
+
+func (e Entry) Target() []byte {
+	switch e.FileType {
+	case Regular:
+		hashAndTarget := e.value.(tuple[xxh3.Uint128, string])
+		return []byte(hashAndTarget.val2)
+	case Symlink:
+		sourceAndTarget := e.value.(tuple[string, string])
+		return []byte(sourceAndTarget.val2)
+	case Directory,
+		CharacterDevice,
+		BlockDevice,
+		FIFO,
+		Socket:
+		target := e.value.(string)
+		return []byte(target)
+	default:
+		panic("unknown value of FileType")
+	}
+}
+
+// LayoutRecord contains information about a
+// file that should be written to the mass memory.
+type LayoutRecord struct {
+	// UID is the UNIX UID.
+	UID uint32
+	// GID is the UNIX GID.
+	GID uint32
+	// Mode is file's mode.
+	Mode fs.FileMode
+	Tag  uint32
+	// Entry is the kind of file, with source
+	// and target paths where necessary.
+	Entry Entry
+}
+
+// tuple mimics the tuple type from other languages.
+type tuple[T1, T2 any] struct {
+	val1 T1
+	val2 T2
 }
