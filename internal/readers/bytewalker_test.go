@@ -13,8 +13,15 @@ const (
 )
 
 var (
-	testData = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	testData []byte
 )
+
+func init() {
+	testData = make([]byte, 8+4+2+1+aheadDistance)
+	for i := range testData {
+		testData[i] = byte(i + 1)
+	}
+}
 
 func TestAhead(t *testing.T) {
 	wlk := readers.ByteWalker(testData)
@@ -36,6 +43,11 @@ func TestUint32(t *testing.T) {
 	testUint32(t, &wlk, testData)
 }
 
+func TestUint64(t *testing.T) {
+	wlk := readers.ByteWalker(testData)
+	testUint64(t, &wlk, testData)
+}
+
 func TestIsWalking(t *testing.T) {
 	wlk := readers.ByteWalker(testData)
 	data := testData
@@ -43,6 +55,7 @@ func TestIsWalking(t *testing.T) {
 	testUint8(t, &wlk, data[aheadDistance:])
 	testUint16(t, &wlk, data[aheadDistance+1:])
 	testUint32(t, &wlk, data[aheadDistance+1+2:])
+	testUint64(t, &wlk, data[aheadDistance+1+2+4:])
 }
 
 func testAhead(t *testing.T, wlk *readers.ByteWalker, data []byte) {
@@ -74,5 +87,13 @@ func testUint32(t *testing.T, wlk *readers.ByteWalker, data []byte) {
 	obtain := wlk.Uint32()
 	if obtain != expect {
 		t.Fatalf("expected uint32 %d. Got %d", expect, obtain)
+	}
+}
+
+func testUint64(t *testing.T, wlk *readers.ByteWalker, data []byte) {
+	expect := binary.BigEndian.Uint64(data)
+	obtain := wlk.Uint64()
+	if obtain != expect {
+		t.Fatalf("expected uint64 %d. Got %d", expect, obtain)
 	}
 }

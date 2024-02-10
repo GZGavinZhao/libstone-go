@@ -1,9 +1,7 @@
 package stone1
 
 import (
-	"bytes"
-	"encoding/binary"
-	"errors"
+	"github.com/der-eismann/libstone/internal/readers"
 )
 
 // RecordKind is the kind of the payload's records.
@@ -50,16 +48,19 @@ type Header struct {
 	Compression Compression
 }
 
-func (h *Header) UnmarshalBinary(data []byte) error {
-	if len(data) < binary.Size(h) {
-		return errors.New("insufficient number of bytes to parse a V1 payload header")
-	}
-	rdr := bytes.NewReader(data)
-	return binary.Read(rdr, binary.BigEndian, h)
-}
+const (
+	headerLen = 32
+)
 
-func (h *Header) MarshalBinary() ([]byte, error) {
-	out := make([]byte, binary.Size(h))
-	wrt := bytes.NewBuffer(out)
-	return out, binary.Write(wrt, binary.BigEndian, h)
+func newHeader(data [headerLen]byte) Header {
+	wlk := readers.ByteWalker(data[:])
+	return Header{
+		StoredSize:  wlk.Uint64(),
+		PlainSize:   wlk.Uint64(),
+		Checksum:    [8]byte(wlk.Ahead(8)),
+		NumRecords:  wlk.Uint32(),
+		Version:     wlk.Uint16(),
+		Kind:        RecordKind(wlk.Uint8()),
+		Compression: Compression(wlk.Uint8()),
+	}
 }

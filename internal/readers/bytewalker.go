@@ -33,3 +33,9 @@ func (r *ByteWalker) Uint32() uint32 {
 	*r = (*r)[4:]
 	return val
 }
+
+func (r *ByteWalker) Uint64() uint64 {
+	val := byteOrder.Uint64(*r)
+	*r = (*r)[8:]
+	return val
+}
