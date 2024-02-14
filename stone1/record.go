@@ -1,6 +1,7 @@
 package stone1
 
 import (
+	"io"
 	"io/fs"
 
 	"github.com/der-eismann/libstone/internal/readers"
@@ -22,6 +23,32 @@ type AttributeRecord struct {
 // Kind returns the kind of this record.
 func (r AttributeRecord) Kind() RecordKind {
 	return Attributes
+}
+
+func newAttributeRecord(src io.Reader) (AttributeRecord, error) {
+	var lengths [8 + 8]byte
+	_, err := io.ReadFull(src, lengths[:])
+	if err != nil {
+		return AttributeRecord{}, err
+	}
+	wlk := readers.ByteWalker(lengths[:])
+	keyLen := wlk.Uint64()
+	valLen := wlk.Uint64()
+
+	key := make([]byte, keyLen)
+	_, err = io.ReadFull(src, key)
+	if err != nil {
+		return AttributeRecord{}, err
+	}
+	val := make([]byte, valLen)
+	_, err = io.ReadFull(src, val)
+	if err != nil {
+		return AttributeRecord{}, err
+	}
+	return AttributeRecord{
+		Key:   key,
+		Value: val,
+	}, nil
 }
 
 // IndexRecord records offsets to unique files within the content when decompressed.
