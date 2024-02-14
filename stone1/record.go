@@ -6,9 +6,21 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
+// Record is a payload record. There are multiple
+// kinds of record: a type conversion is required to inspect the content.
+type Record interface {
+	// Kind returns the kind of this record.
+	Kind() RecordKind
+}
+
 type AttributeRecord struct {
 	Key   []byte
 	Value []byte
+}
+
+// Kind returns the kind of this record.
+func (r AttributeRecord) Kind() RecordKind {
+	return Attributes
 }
 
 // IndexRecord records offsets to unique files within the content when decompressed.
@@ -21,6 +33,11 @@ type IndexRecord struct {
 	End uint64
 	// Hash is the XXH3_128 hash of the content.
 	Hash xxh3.Uint128
+}
+
+// Kind returns the kind of this record.
+func (r IndexRecord) Kind() RecordKind {
+	return Index
 }
 
 type MetaTag uint16
@@ -161,6 +178,11 @@ type MetaRecord struct {
 	Value MetaValue
 }
 
+// Kind returns the kind of this record.
+func (r MetaRecord) Kind() RecordKind {
+	return Meta
+}
+
 type FileType uint8
 
 const (
@@ -238,6 +260,11 @@ type LayoutRecord struct {
 	// Entry is the kind of file, with source
 	// and target paths where necessary.
 	Entry Entry
+}
+
+// Kind returns the kind of this record.
+func (r LayoutRecord) Kind() RecordKind {
+	return Layout
 }
 
 // tuple mimics the tuple type from other languages.

@@ -47,7 +47,7 @@ func (r *Reader) NextPayload() bool {
 // NextRecord advances to the next payload record.
 // It returns a nil record and io.EOF if it reached the end of the current payload.
 // It panics if NextPayload was not called beforehand.
-func (r *Reader) NextRecord() (any, error) {
+func (r *Reader) NextRecord() (Record, error) {
 	if r.Err != nil {
 		return nil, r.Err
 	}
