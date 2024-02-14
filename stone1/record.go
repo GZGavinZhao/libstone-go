@@ -3,6 +3,7 @@ package stone1
 import (
 	"io/fs"
 
+	"github.com/der-eismann/libstone/internal/readers"
 	"github.com/zeebo/xxh3"
 )
 
@@ -38,6 +39,20 @@ type IndexRecord struct {
 // Kind returns the kind of this record.
 func (r IndexRecord) Kind() RecordKind {
 	return Index
+}
+
+const lenIndexRecord = 8 + 8 + 16
+
+func newIndexRecord(data [lenIndexRecord]byte) IndexRecord {
+	wlk := readers.ByteWalker(data[:])
+	return IndexRecord{
+		Start: wlk.Uint64(),
+		End:   wlk.Uint64(),
+		Hash: xxh3.Uint128{
+			Hi: wlk.Uint64(),
+			Lo: wlk.Uint64(),
+		},
+	}
 }
 
 type MetaTag uint16
