@@ -1,6 +1,7 @@
 package stone1
 
 import (
+	"bytes"
 	"io"
 	"io/fs"
 
@@ -13,6 +14,7 @@ import (
 type Record interface {
 	// Kind returns the kind of this record.
 	Kind() RecordKind
+	decode(src io.Reader) error
 }
 
 type AttributeRecord struct {
@@ -25,30 +27,27 @@ func (r AttributeRecord) Kind() RecordKind {
 	return Attributes
 }
 
-func newAttributeRecord(src io.Reader) (AttributeRecord, error) {
+func (r *AttributeRecord) decode(src io.Reader) error {
 	var lengths [8 + 8]byte
 	_, err := io.ReadFull(src, lengths[:])
 	if err != nil {
-		return AttributeRecord{}, err
+		return err
 	}
 	wlk := readers.ByteWalker(lengths[:])
 	keyLen := wlk.Uint64()
 	valLen := wlk.Uint64()
 
-	key := make([]byte, keyLen)
-	_, err = io.ReadFull(src, key)
+	r.Key = make([]byte, keyLen)
+	_, err = io.ReadFull(src, r.Key)
 	if err != nil {
-		return AttributeRecord{}, err
+		return err
 	}
-	val := make([]byte, valLen)
-	_, err = io.ReadFull(src, val)
+	r.Value = make([]byte, valLen)
+	_, err = io.ReadFull(src, r.Value)
 	if err != nil {
-		return AttributeRecord{}, err
+		return err
 	}
-	return AttributeRecord{
-		Key:   key,
-		Value: val,
-	}, nil
+	return nil
 }
 
 // IndexRecord records offsets to unique files within the content when decompressed.
@@ -68,11 +67,14 @@ func (r IndexRecord) Kind() RecordKind {
 	return Index
 }
 
-const lenIndexRecord = 8 + 8 + 16
-
-func newIndexRecord(data [lenIndexRecord]byte) IndexRecord {
+func (r *IndexRecord) decode(src io.Reader) error {
+	var data [8 + 8 + 16]byte
+	_, err := io.ReadFull(src, data[:])
+	if err != nil {
+		return err
+	}
 	wlk := readers.ByteWalker(data[:])
-	return IndexRecord{
+	*r = IndexRecord{
 		Start: wlk.Uint64(),
 		End:   wlk.Uint64(),
 		Hash: xxh3.Uint128{
@@ -80,6 +82,7 @@ func newIndexRecord(data [lenIndexRecord]byte) IndexRecord {
 			Lo: wlk.Uint64(),
 		},
 	}
+	return nil
 }
 
 type MetaTag uint16
@@ -127,40 +130,40 @@ const (
 	SourceRef
 )
 
-type MetaKind uint8
+type MetaFieldKind uint8
 
 const (
-	Int8 MetaKind = iota + 1
-	Uint8
-	Int16
-	Uint16
-	Int32
-	Uint32
-	Int64
-	Uint64
-	String
-	Dependency
-	Provider
+	Int8MetaField MetaFieldKind = iota + 1
+	Uint8MetaField
+	Int16MetaField
+	Uint16MetaField
+	Int32MetaField
+	Uint32MetaField
+	Int64MetaField
+	Uint64MetaField
+	StringMetaField
+	DependencyMetaField
+	ProviderMetaField
 )
 
-type MetaValue struct {
-	Kind  MetaKind
+type MetaField struct {
+	Kind  MetaFieldKind
 	Value any
 }
 
-func (mv MetaValue) Size() int {
+func (mv MetaField) size() int {
 	switch mv.Kind {
-	case Int8, Uint8:
+	case Int8MetaField, Uint8MetaField:
 		return 1
-	case Int16, Uint16:
+	case Int16MetaField, Uint16MetaField:
 		return 2
-	case Int32, Uint32:
+	case Int32MetaField, Uint32MetaField:
 		return 4
-	case Int64, Uint64:
+	case Int64MetaField, Uint64MetaField:
 		return 8
-	case String:
+	case StringMetaField:
 		return len(mv.Value.(string))
-	case Dependency, Provider:
+	case DependencyMetaField, ProviderMetaField:
 		// TODO: should cast to a DependencyValue.
 		return len(mv.Value.(string))
 	default:
@@ -215,14 +218,65 @@ func (d DependencyKind) String() string {
 	}
 }
 
+type Dependency struct {
+	Kind DependencyKind
+	Name string
+}
+
 type MetaRecord struct {
 	Tag   MetaTag
-	Value MetaValue
+	Field MetaField
 }
 
 // Kind returns the kind of this record.
 func (r MetaRecord) Kind() RecordKind {
 	return Meta
+}
+
+func (r *MetaRecord) decode(src io.Reader) error {
+	var header [4 + 2 + 1 + 1]byte
+	_, err := io.ReadFull(src, header[:])
+	if err != nil {
+		return err
+	}
+
+	wlk := readers.ByteWalker(header[:])
+	length := wlk.Uint32()
+	r.Tag = MetaTag(wlk.Uint16())
+	r.Field.Kind = MetaFieldKind(wlk.Uint8())
+	wlk.Uint8() // Skip padding.
+
+	buf := make([]byte, length)
+	_, err = io.ReadFull(src, buf)
+	if err != nil {
+		return err
+	}
+	switch r.Field.Kind {
+	case Int8MetaField:
+		r.Field.Value = int8(buf[0])
+	case Uint8MetaField:
+		r.Field.Value = buf[0]
+	case Int16MetaField:
+		r.Field.Value = int16(readers.ByteOrder.Uint16(buf))
+	case Uint16MetaField:
+		r.Field.Value = readers.ByteOrder.Uint16(buf)
+	case Int32MetaField:
+		r.Field.Value = int32(readers.ByteOrder.Uint32(buf))
+	case Uint32MetaField:
+		r.Field.Value = readers.ByteOrder.Uint32(buf)
+	case Int64MetaField:
+		r.Field.Value = int64(readers.ByteOrder.Uint64(buf))
+	case Uint64MetaField:
+		r.Field.Value = readers.ByteOrder.Uint64(buf)
+	case StringMetaField:
+		r.Field.Value = string(bytes.TrimSuffix(buf, []byte{0}))
+	case DependencyMetaField, ProviderMetaField:
+		r.Field.Value = Dependency{
+			Kind: DependencyKind(buf[0]),
+			Name: string(bytes.TrimSuffix(buf[1:], []byte{0})),
+		}
+	}
+	return nil
 }
 
 type FileType uint8
