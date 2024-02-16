@@ -1,24 +1,37 @@
 package stone1
 
-import "io"
+import (
+	"io"
+
+	"github.com/klauspost/compress/zstd"
+)
 
 // Reader iterates over the content of a V1 stone archive.
 type Reader struct {
 	Err error
 
-	pre        Prelude
-	src        io.Reader
-	currHeader Header
-	idxPayload int
-	idxRecord  int
+	pre Prelude   // pre is the archive's prelude.
+	src io.Reader // src is the reader from which the archive content is read.
+
+	currHeader Header // currHeader is the header of the current payload.
+	idxPayload int    // idxPayload points to the current payload.
+	idxRecord  int    // idxRecord points to the current record.
+
+	decomp *zstd.Decoder      // decomp decompresses payloads.
+	cache  io.ReadWriteSeeker // cache is where the payloads are extracted.
 }
 
-// NewReader creates a new Reader.
-func NewReader(pre Prelude, src io.Reader) *Reader {
+// NewReader creates a new Reader which continues to read a stone archive from src.
+// pre is the previously-written Prelude of the archive.
+// Since stone payloads may be big in size, a cache is required to temporarily store data.
+func NewReader(pre Prelude, src io.Reader, cache io.ReadWriteSeeker) *Reader {
+	decomp, _ := zstd.NewReader(nil)
 	return &Reader{
 		pre:        pre,
 		src:        src,
 		idxPayload: -1,
+		decomp:     decomp,
+		cache:      cache,
 	}
 }
 
@@ -33,6 +46,7 @@ func (r *Reader) NextPayload() bool {
 		r.Err = nil
 		return false
 	}
+
 	hdr, err := r.readHeader()
 	if err != nil {
 		r.Err = err
@@ -40,7 +54,7 @@ func (r *Reader) NextPayload() bool {
 	}
 	r.currHeader = hdr
 	r.idxPayload += 1
-	r.idxRecord = 0
+	r.idxRecord = -1
 	return true
 }
 
@@ -57,6 +71,15 @@ func (r *Reader) NextRecord() (Record, error) {
 	if r.idxRecord >= int(r.currHeader.NumRecords) {
 		return nil, io.EOF
 	}
+
+	if r.idxRecord < 0 {
+		err := r.extractPayload()
+		if err != nil {
+			r.Err = err
+			return nil, err
+		}
+		r.idxRecord = 0
+	}
 	// TODO: Read.
 	r.idxRecord += 1
 	return nil, nil
@@ -69,4 +92,12 @@ func (r *Reader) readHeader() (Header, error) {
 		return Header{}, err
 	}
 	return newHeader(buf), nil
+}
+
+func (r *Reader) extractPayload() error {
+	return nil
+}
+
+func (r *Reader) readRecord() (Record, error) {
+	return nil, nil
 }
