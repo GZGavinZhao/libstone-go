@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	byteOrder = binary.BigEndian
+	ByteOrder = binary.BigEndian
 )
 
 type ByteWalker []byte
@@ -23,19 +23,19 @@ func (r *ByteWalker) Uint8() uint8 {
 }
 
 func (r *ByteWalker) Uint16() uint16 {
-	val := byteOrder.Uint16(*r)
+	val := ByteOrder.Uint16(*r)
 	*r = (*r)[2:]
 	return val
 }
 
 func (r *ByteWalker) Uint32() uint32 {
-	val := byteOrder.Uint32(*r)
+	val := ByteOrder.Uint32(*r)
 	*r = (*r)[4:]
 	return val
 }
 
 func (r *ByteWalker) Uint64() uint64 {
-	val := byteOrder.Uint64(*r)
+	val := ByteOrder.Uint64(*r)
 	*r = (*r)[8:]
 	return val
 }
