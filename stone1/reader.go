@@ -1,9 +1,11 @@
 package stone1
 
 import (
+	"errors"
 	"io"
 
 	"github.com/klauspost/compress/zstd"
+	"github.com/zeebo/xxh3"
 )
 
 // Reader iterates over the content of a V1 stone archive.
@@ -13,12 +15,12 @@ type Reader struct {
 	pre Prelude   // pre is the archive's prelude.
 	src io.Reader // src is the reader from which the archive content is read.
 
-	currHeader Header // currHeader is the header of the current payload.
-	idxPayload int    // idxPayload points to the current payload.
-	idxRecord  int    // idxRecord points to the current record.
+	currHeader   Header             // currHeader is the header of the current payload.
+	payloadCache io.ReadWriteSeeker // payloadCache is the current payload.
+	idxPayload   int                // idxPayload points to the current payload.
+	idxRecord    int                // idxRecord points to the current record.
 
-	decomp *zstd.Decoder      // decomp decompresses payloads.
-	cache  io.ReadWriteSeeker // cache is where the payloads are extracted.
+	decomp *zstd.Decoder // decomp decompresses payloads.
 }
 
 // NewReader creates a new Reader which continues to read a stone archive from src.
@@ -27,11 +29,11 @@ type Reader struct {
 func NewReader(pre Prelude, src io.Reader, cache io.ReadWriteSeeker) *Reader {
 	decomp, _ := zstd.NewReader(nil)
 	return &Reader{
-		pre:        pre,
-		src:        src,
-		idxPayload: -1,
-		decomp:     decomp,
-		cache:      cache,
+		pre:          pre,
+		src:          src,
+		idxPayload:   -1,
+		decomp:       decomp,
+		payloadCache: cache,
 	}
 }
 
@@ -78,7 +80,6 @@ func (r *Reader) NextRecord() (Record, error) {
 			r.Err = err
 			return nil, err
 		}
-		r.idxRecord = 0
 	}
 	// TODO: Read.
 	r.idxRecord += 1
@@ -95,7 +96,30 @@ func (r *Reader) readHeader() (Header, error) {
 }
 
 func (r *Reader) extractPayload() error {
-	return nil
+	_, err := r.payloadCache.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
+	src := r.src
+	if r.currHeader.Compression == ZSTD {
+		err = r.decomp.Reset(r.src)
+		if err != nil {
+			return err
+		}
+		src = r.decomp
+	}
+
+	hasher := xxh3.New()
+	payload := io.TeeReader(src, hasher)
+	_, err = io.Copy(r.payloadCache, payload)
+	if err != nil {
+		return err
+	}
+	if hasher.Sum64() != r.currHeader.Checksum {
+		return errors.New("payload checksum does not match")
+	}
+	_, err = r.payloadCache.Seek(0, io.SeekStart)
+	return err
 }
 
 func (r *Reader) readRecord() (Record, error) {

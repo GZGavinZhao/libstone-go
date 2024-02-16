@@ -26,7 +26,7 @@ type Compression uint8
 const (
 	// Uncompressed indicates an uncompressed content.
 	Uncompressed Compression = iota + 1
-	// Uncompressed indicates a compressed content using zstd.
+	// ZSTD indicates a compressed content using zstd.
 	ZSTD
 )
 
@@ -37,7 +37,7 @@ type Header struct {
 	// PlainSize is the size, in bytes, of the content as it is.
 	PlainSize uint64
 	// Checksum is the payload's checksum.
-	Checksum [8]byte
+	Checksum uint64
 	// NumRecords is the number of records contained in the payload.
 	NumRecords uint32
 	// Version is the version of the payload data format.
@@ -57,7 +57,7 @@ func newHeader(data [headerLen]byte) Header {
 	return Header{
 		StoredSize:  wlk.Uint64(),
 		PlainSize:   wlk.Uint64(),
-		Checksum:    [8]byte(wlk.Ahead(8)),
+		Checksum:    wlk.Uint64(),
 		NumRecords:  wlk.Uint32(),
 		Version:     wlk.Uint16(),
 		Kind:        RecordKind(wlk.Uint8()),
