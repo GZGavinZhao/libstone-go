@@ -269,11 +269,11 @@ func (r *MetaRecord) decode(src io.Reader) error {
 	case Uint64MetaField:
 		r.Field.Value = readers.ByteOrder.Uint64(buf)
 	case StringMetaField:
-		r.Field.Value = string(bytes.TrimSuffix(buf, []byte{0}))
+		r.Field.Value = trimTerminator(buf)
 	case DependencyMetaField, ProviderMetaField:
 		r.Field.Value = Dependency{
 			Kind: DependencyKind(buf[0]),
-			Name: string(bytes.TrimSuffix(buf[1:], []byte{0})),
+			Name: trimTerminator(buf[1:]),
 		}
 	}
 	return nil
@@ -363,8 +363,62 @@ func (r LayoutRecord) Kind() RecordKind {
 	return Layout
 }
 
+func (r *LayoutRecord) decode(src io.Reader) error {
+	var header [4 + 4 + 4 + 4 + 2 + 2 + 1 + 11]byte
+	_, err := io.ReadFull(src, header[:])
+	if err != nil {
+		return err
+	}
+
+	wlk := readers.ByteWalker(header[:])
+	*r = LayoutRecord{
+		UID:  wlk.Uint32(),
+		GID:  wlk.Uint32(),
+		Mode: fs.FileMode(wlk.Uint32()),
+		Tag:  wlk.Uint32(),
+	}
+	srcLen := wlk.Uint16()
+	tgtLen := wlk.Uint16()
+	r.Entry.FileType = FileType(wlk.Uint8())
+	wlk.Ahead(11) // Skip padding.
+
+	buf := make([]byte, srcLen+tgtLen)
+	_, err = io.ReadFull(src, buf)
+	if err != nil {
+		return err
+	}
+	switch r.Entry.FileType {
+	case Regular:
+		r.Entry.value = tuple[xxh3.Uint128, string]{
+			val1: xxh3.Uint128{
+				Hi: readers.ByteOrder.Uint64(buf[:srcLen/2]),
+				Lo: readers.ByteOrder.Uint64(buf[srcLen/2 : srcLen]),
+			},
+			val2: trimTerminator(buf[srcLen:]),
+		}
+	case Symlink:
+		r.Entry.value = tuple[string, string]{
+			val1: trimTerminator(buf[:srcLen]),
+			val2: trimTerminator(buf[srcLen:]),
+		}
+	case Directory,
+		CharacterDevice,
+		BlockDevice,
+		FIFO,
+		Socket:
+		r.Entry.value = trimTerminator(buf[:tgtLen])
+	default:
+		panic("unknown value of FileType")
+	}
+	return nil
+}
+
 // tuple mimics the tuple type from other languages.
 type tuple[T1, T2 any] struct {
 	val1 T1
 	val2 T2
+}
+
+func trimTerminator(str []byte) string {
+	return string(bytes.TrimSuffix(str, []byte{0}))
 }
