@@ -211,6 +211,10 @@ func (d Dependency) String() string {
 	return fmt.Sprintf("%s(%s)", d.Kind, d.Name)
 }
 
+func (d Dependency) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("\"%s\"", d.String())), nil
+}
+
 type MetaRecord struct {
 	Tag   MetaTag
 	Field MetaField
